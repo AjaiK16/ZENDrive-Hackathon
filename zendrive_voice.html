@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ZenDrive Voice Assistant</title>
+    <meta charset="UTF-8">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 30px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: 0;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { font-size: 2.5em; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        
+        button { 
+            padding: 20px 40px; 
+            font-size: 18px; 
+            margin: 15px; 
+            cursor: pointer; 
+            border: none;
+            border-radius: 12px;
+            background: #4CAF50;
+            color: white;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            font-weight: bold;
+        }
+        button:hover { 
+            background: #45a049; 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+        
+        #status { 
+            font-size: 24px; 
+            margin: 40px 0; 
+            padding: 25px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 15px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .listening { 
+            background: #ff4444 !important; 
+            animation: pulse 1.5s infinite;
+            box-shadow: 0 0 20px rgba(255,68,68,0.5);
+        }
+        .ready { background: #4CAF50 !important; }
+        .activated { background: rgba(76,175,80,0.3) !important; border: 2px solid #4CAF50 !important; }
+        .processing { background: rgba(33,150,243,0.3) !important; border: 2px solid #2196F3 !important; }
+        
+        @keyframes pulse { 
+            0% { opacity: 1; transform: scale(1); } 
+            50% { opacity: 0.8; transform: scale(1.05); } 
+            100% { opacity: 1; transform: scale(1); } 
+        }
+        
+        .mic-icon {
+            font-size: 4em;
+            margin: 20px 0;
+            opacity: 0.8;
+        }
+        
+        .start-btn {
+            background: #FF9800;
+            font-size: 24px;
+            padding: 25px 50px;
+            box-shadow: 0 6px 15px rgba(255,152,0,0.3);
+        }
+        .start-btn:hover { 
+            background: #e68900; 
+            box-shadow: 0 8px 20px rgba(255,152,0,0.4);
+        }
+        
+        .command-btn {
+            background: #2196F3;
+            font-size: 20px;
+            padding: 20px 30px;
+            margin: 10px;
+        }
+        .command-btn:hover { background: #0b7dda; }
+        
+        .commands-section {
+            margin: 30px 0;
+            display: none;
+        }
+        
+        .info {
+            margin-top: 40px;
+            font-size: 16px;
+            opacity: 0.9;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .confidence-bar {
+            width: 300px;
+            height: 6px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+            margin: 15px auto;
+            overflow: hidden;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: #4CAF50;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .debug-info {
+            margin-top: 20px;
+            font-size: 14px;
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .commands-info {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+
+        .command-type {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 ZenDrive Voice Assistant</h1>
+        
+        <div class="mic-icon" id="micIcon">🎤</div>
+        
+        <div id="status">Ready to listen for voice commands</div>
+        
+        <div class="confidence-bar">
+            <div class="confidence-fill" id="confidenceBar"></div>
+        </div>
+        
+        <button id="startBtn" class="start-btn" onclick="initializeVoice()">
+            🎤 Start Voice Assistant
+        </button>
+        
+        <div class="commands-section" id="commandsSection">
+            <button class="command-btn" onclick="sendCommand('get emails')">📧 Full Digest</button>
+            <button class="command-btn" onclick="sendCommand('priority')">⚡ Priority Only</button>
+            <button class="command-btn" onclick="sendCommand('calendar')">📅 Calendar</button>
+            <button class="command-btn" onclick="sendCommand('stop')">⏹️ Stop</button>
+        </div>
+        
+        <div class="info">
+            <h3>🗣️ Voice Commands:</h3>
+            <p><strong>Wake Word:</strong> Say "ZenDrive" first</p>
+            
+            <div class="commands-info">
+                <div class="command-type">
+                    <strong>📧 "Get Emails" / "Email Digest"</strong><br>
+                    <small>Complete overview: Quick summary + priority emails + other emails<br>
+                    Perfect for: Planning your day, comprehensive check while parked</small>
+                </div>
+                
+                <div class="command-type">
+                    <strong>⚡ "Priority" / "Urgent"</strong><br>
+                    <small>Only high priority emails for quick urgent check<br>
+                    Perfect for: Quick check at red lights, while driving safely</small>
+                </div>
+                
+                <div class="command-type">
+                    <strong>📅 "Calendar" / "Schedule"</strong><br>
+                    <small>Today's meetings and appointments<br>
+                    Perfect for: Planning your route and timing</small>
+                </div>
+                
+                <div class="command-type">
+                    <strong>⏹️ "Stop" / "Quit"</strong><br>
+                    <small>Deactivate ZenDrive voice assistant</small>
+                </div>
+            </div>
+            
+            <p><strong>Example:</strong> "ZenDrive" → "get emails" (full digest) or "priority" (urgent only)</p>
+        </div>
+        
+        <div class="debug-info" id="debugInfo">
+            <strong>Debug Info:</strong><br>
+            Voice Client Port: 8001<br>
+            FastAPI Server: localhost:8000<br>
+            Status: Initializing...
+        </div>
+    </div>
+    
+    <script>
+    let recognition = null;
+    let isListening = false;
+    let isActivated = false;
+    let continuousMode = false;
+    
+    function updateDebugInfo(message) {
+        const debugDiv = document.getElementById('debugInfo');
+        const timestamp = new Date().toLocaleTimeString();
+        debugDiv.innerHTML += `<br>${timestamp}: ${message}`;
+        debugDiv.scrollTop = debugDiv.scrollHeight;
+    }
+    
+    function initializeVoice() {
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            document.getElementById('status').innerHTML = '❌ Voice recognition not supported. Please use Chrome or Edge browser.';
+            updateDebugInfo('❌ Speech Recognition API not available');
+            return;
+        }
+        
+        document.getElementById('status').innerHTML = '🎤 Initializing voice recognition...';
+        updateDebugInfo('🎤 Initializing Speech Recognition API');
+        
+        try {
+            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+            recognition.maxAlternatives = 1;
+            
+            updateDebugInfo('✅ Speech Recognition configured');
+            setupEventHandlers();
+            
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('commandsSection').style.display = 'block';
+            document.getElementById('status').innerHTML = '✅ Voice assistant ready! Say "ZenDrive" to activate.';
+            document.getElementById('status').className = 'ready';
+            
+            updateDebugInfo('✅ Voice assistant initialized, starting listener');
+            startListening();
+            
+        } catch (error) {
+            console.error('Voice initialization error:', error);
+            updateDebugInfo('❌ Initialization error: ' + error.message);
+            document.getElementById('status').innerHTML = '❌ Failed to initialize voice recognition. Please refresh and try again.';
+        }
+    }
+    
+    function setupEventHandlers() {
+        recognition.onstart = function() {
+            console.log('🎤 Voice recognition started');
+            updateDebugInfo('🎤 Voice recognition started');
+            isListening = true;
+            document.getElementById('micIcon').innerHTML = '🔴';
+            
+            if (!isActivated) {
+                document.getElementById('status').innerHTML = '🎤 Listening... Say "ZenDrive" now!';
+            } else {
+                document.getElementById('status').innerHTML = '🎤 Activated! Say your command now!';
+            }
+            document.getElementById('status').className = 'listening';
+        };
+        
+        recognition.onresult = function(event) {
+            const result = event.results[0];
+            const command = result[0].transcript.toLowerCase().trim();
+            const confidence = result[0].confidence;
+            
+            console.log('Recognized:', command, 'Confidence:', confidence);
+            updateDebugInfo(`🗣️ Recognized: "${command}" (${Math.round(confidence*100)}% confidence)`);
+            
+            document.getElementById('confidenceBar').style.width = (confidence * 100) + '%';
+            processVoiceCommand(command);
+        };
+        
+        recognition.onerror = function(event) {
+            console.error('Speech recognition error:', event.error);
+            updateDebugInfo('❌ Speech error: ' + event.error);
+            
+            isListening = false;
+            document.getElementById('micIcon').innerHTML = '🎤';
+            
+            let errorMessage = '';
+            switch(event.error) {
+                case 'network':
+                    errorMessage = '🌐 Network error. Check your internet connection and try again.';
+                    break;
+                case 'not-allowed':
+                case 'service-not-allowed':
+                    errorMessage = '🎤 Microphone access denied. Please allow microphone access and refresh the page.';
+                    break;
+                case 'no-speech':
+                    errorMessage = '🤫 No speech detected. Please try speaking again.';
+                    setTimeout(() => {
+                        if (!isListening) {
+                            startListening();
+                        }
+                    }, 2000);
+                    break;
+                case 'audio-capture':
+                    errorMessage = '🎤 No microphone found. Please check your microphone connection.';
+                    break;
+                default:
+                    errorMessage = '❌ Voice recognition error: ' + event.error + '. Please try again.';
+                    break;
+            }
+            
+            document.getElementById('status').innerHTML = errorMessage;
+            document.getElementById('status').className = 'ready';
+        };
+        
+        recognition.onend = function() {
+            console.log('🎤 Voice recognition ended');
+            updateDebugInfo('🎤 Voice recognition session ended');
+            isListening = false;
+            document.getElementById('micIcon').innerHTML = '🎤';
+            
+            if (continuousMode && isActivated) {
+                setTimeout(() => {
+                    startListening();
+                }, 1000);
+            } else if (!isActivated) {
+                setTimeout(() => {
+                    startListening();
+                }, 1500);
+            }
+        };
+    }
+    
+    function processVoiceCommand(command) {
+        console.log('Processing command:', command);
+        updateDebugInfo(`🔍 Processing command: "${command}"`);
+        
+        if (!isActivated && (command.includes('zendrive') || command.includes('zen drive'))) {
+            isActivated = true;
+            continuousMode = true;
+            
+            document.getElementById('status').innerHTML = '✅ ZenDrive activated! Now say your command.';
+            document.getElementById('status').className = 'activated';
+            document.getElementById('micIcon').innerHTML = '✅';
+            
+            updateDebugInfo('✅ Wake word detected - ZenDrive activated');
+            sendCommand('wake');
+            
+            setTimeout(() => {
+                if (!isListening) {
+                    startListening();
+                }
+            }, 2000);
+            
+        } else if (isActivated) {
+            document.getElementById('status').innerHTML = '🔄 Processing: "' + command + '"';
+            document.getElementById('status').className = 'processing';
+            document.getElementById('micIcon').innerHTML = '🔄';
+            
+            updateDebugInfo(`📡 Sending command to Python: "${command}"`);
+            sendCommand(command);
+            
+            if (command.includes('stop') || command.includes('quit')) {
+                isActivated = false;
+                continuousMode = false;
+                updateDebugInfo('⏹️ Stop command received - deactivating');
+                setTimeout(() => {
+                    document.getElementById('status').innerHTML = '✅ ZenDrive stopped. Say "ZenDrive" to reactivate.';
+                    document.getElementById('status').className = 'ready';
+                    document.getElementById('micIcon').innerHTML = '🎤';
+                }, 3000);
+            } else {
+                setTimeout(() => {
+                    if (isActivated) {
+                        document.getElementById('status').innerHTML = '✅ Ready for next command!';
+                        document.getElementById('status').className = 'activated';
+                        document.getElementById('micIcon').innerHTML = '🎤';
+                    }
+                }, 3000);
+            }
+            
+        } else {
+            document.getElementById('status').innerHTML = 'Say "ZenDrive" first to activate! (Heard: "' + command + '")';
+            document.getElementById('status').className = 'ready';
+            document.getElementById('micIcon').innerHTML = '⚠️';
+            
+            updateDebugInfo(`⚠️ Command without wake word: "${command}"`);
+            
+            setTimeout(() => {
+                document.getElementById('status').innerHTML = '🎤 Say "ZenDrive" to activate...';
+                document.getElementById('micIcon').innerHTML = '🎤';
+            }, 3000);
+        }
+    }
+    
+    function startListening() {
+        if (!isListening && recognition) {
+            try {
+                updateDebugInfo('🎧 Starting voice recognition listener');
+                recognition.start();
+            } catch (error) {
+                console.error('Error starting recognition:', error);
+                updateDebugInfo('❌ Error starting listener: ' + error.message);
+                document.getElementById('status').innerHTML = '❌ Error starting voice recognition. Please try refreshing the page.';
+            }
+        }
+    }
+    
+    function sendCommand(command) {
+        console.log('📡 Sending command to Python:', command);
+        updateDebugInfo(`📡 HTTP POST to localhost:8001/voice-command`);
+        
+        fetch('http://localhost:8001/voice-command', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({command: command})
+        })
+        .then(response => {
+            updateDebugInfo(`📨 Response status: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            console.log('✅ Command processed:', data);
+            updateDebugInfo(`✅ Command processed successfully`);
+        })
+        .catch(error => {
+            console.error('❌ Command error:', error);
+            updateDebugInfo(`❌ Connection error: ${error.message}`);
+            document.getElementById('status').innerHTML = '❌ Connection error. Is the Python server running on port 8001?';
+        });
+    }
+    
+    window.addEventListener('load', function() {
+        updateDebugInfo('🌐 Page loaded, requesting microphone permission');
+        
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(function(stream) {
+                    console.log('✅ Microphone permission granted');
+                    updateDebugInfo('✅ Microphone permission granted');
+                    stream.getTracks().forEach(track => track.stop());
+                })
+                .catch(function(error) {
+                    console.log('⚠️ Microphone permission denied:', error);
+                    updateDebugInfo('⚠️ Microphone permission denied: ' + error.message);
+                });
+        }
+    });
+    </script>
+</body>
+</html>
